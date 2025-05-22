@@ -57,10 +57,19 @@ func updateEvent(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"message": "failed to parse int"})
 		return
 	}
-	_, err = models.GetUniqueEvent(eventId)
+
+	userId := context.GetInt("userId")
+	event, err := models.GetUniqueEvent(eventId)
+
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"message": "event does not exists"})
 		return
+	}
+
+	if int(event.UserId) != userId {
+		context.JSON(http.StatusUnauthorized, gin.H{"message": "not authorized"})
+		return
+
 	}
 
 	var updatedEvent models.Event
@@ -72,7 +81,7 @@ func updateEvent(context *gin.Context) {
 
 	updatedEvent.ID = eventId
 
-	event, err := updatedEvent.UpdateEvent()
+	_, err = updatedEvent.UpdateEvent()
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "could not update event"})
 		return
@@ -82,16 +91,22 @@ func updateEvent(context *gin.Context) {
 }
 
 func deleteEvent(context *gin.Context) {
+	userId := context.GetInt("userId")
 	eventId, err := strconv.ParseInt(context.Param("id"), 10, 64)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"message": "unable to parse event id"})
 		return
 	}
 
-	_, err = models.GetUniqueEvent(eventId)
+	event, err := models.GetUniqueEvent(eventId)
 
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"message": "event does not exists"})
+		return
+	}
+
+	if event.UserId != int64(userId) {
+		context.JSON(http.StatusUnauthorized, gin.H{"message": "not authorized"})
 		return
 	}
 
